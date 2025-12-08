@@ -33,6 +33,13 @@ app_ui = ui.page_navbar(
         2. Model Training: Fit models on train/test split
         3. Model Evaluation: Metrics & plots
         4. Prediction: Enter new values for predictors to estimate obesity level
+        
+        ## App Usage
+        1. See the Data preview tab
+        2. Choose a model from the Model tab
+        3. Adjust train/test split and other required thresholds
+        4. Click 'Run Model' to train and evaluate a prediction
+        5. Enter new values for predictors to predict probability using selected 
         """)
     ),
 
