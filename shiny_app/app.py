@@ -50,7 +50,9 @@ app_ui = ui.page_fluid(
                 This app uses nutritional, physical, and behavioral data to build predictive models for BMI.
                 <br>
                 ## Data Source
-                The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records.
+                The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records. The official dataset article was consulted to understand each variable and its codebook definitions.
+
+                The dataset was inspected and found to have no missing values. Column names were made descriptive, binary variables standardized to "Yes"/"No", and discrete features rounded and mapped to meaningful categories. Text inconsistencies were corrected, categorical features converted to category dtype, and a BMI column was calculated by dividing weight by height squared. 
 
                 ## Target Variable
                 - BMI (kg/m2)
@@ -75,7 +77,7 @@ app_ui = ui.page_fluid(
                 - Enter new values to predict BMI based on model selected
 
                 ## Authors
-                Natalie Seah, Erin Siedlecki, Emily Garman, Ben Doniger, Bela Barton
+                Natalie Seah, Erin Siedlecki, Emily Garman, Ben Doniger, Isabela Barton
                 """),
                 style="padding:20px; background-color:#ecf0f1; border-radius:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"
             )
