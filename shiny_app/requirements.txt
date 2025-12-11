@@ -2,3 +2,5 @@ shiny
 pandas
 numpy
 scikit-learn
+statsmodels
+jinja2
