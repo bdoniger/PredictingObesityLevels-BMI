@@ -10,9 +10,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LassoCV
 from sklearn.ensemble import RandomForestRegressor
 
-# -------------------------
-# Load dataset
-# -------------------------
 df = pd.read_csv("obesity_cleaned.csv")
 df['BMI_kg_m2'] = round(df['Weight'] / (df['Height'] ** 2), 2)
 df = df.rename(columns={'Height': 'Height_meters', 'Weight': 'Weight_kg'})
@@ -23,115 +20,150 @@ predictor_cols = [c for c in df.columns if c != target_col]
 numeric_predictors = [c for c in predictor_cols if pd.api.types.is_numeric_dtype(df[c])]
 categorical_predictors = [c for c in predictor_cols if c not in numeric_predictors]
 
-# -------------------------
-# UI
-# -------------------------
+#UI
 app_ui = ui.page_fluid(
+    # Title
     ui.div(
         ui.h1(
-            "Obesity Level Prediction Dashboard",
-            style="font-size: 28px; margin-top: 20px; margin-bottom: 20px; white-space: nowrap;"
+            "BMI Prediction Dashboard",
+            style="font-size:32px; font-weight:bold; margin-top:40px; margin-bottom:25px; color:#2c3e50;"
         ),
-        style="padding-left: 15px;"
+        style="padding-left:20px;"
     ),
     ui.page_navbar(
-        # README TAB
+        # readme tab
         ui.nav_panel(
             "README",
-            ui.h2("Project Overview: Obesity Level Predictions from Nutritional and Physical Characteristics"),
-            ui.markdown("""
-            This app uses nutritional, physical, and behavioral data to build predictive models for BMI and obesity levels.
-            <br>
-            ## Data Source
-            The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records. The official dataset article was consulted to understand each variable and its codebook definitions.
-            
-            The dataset was inspected and found to have no missing values. Column names were made descriptive, binary variables standardized to "Yes"/"No", and discrete features rounded and mapped to meaningful categories. Text inconsistencies were corrected, categorical features were converted to category dtype, and a BMI column was calculated by dividing weight by height squared. 
+            ui.div(
+                ui.h2("Project Overview: ", style="color:#2c3e50;"),
+                ui.markdown("""
+                This app uses nutritional, physical, and behavioral data to build predictive models for BMI.
+                <br>
+                ## Data Source
+                The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records. The official dataset article was consulted to understand each variable and its codebook definitions.
 
-            ## Target Variable
-            - BMI (kg/m2)
+                The dataset was inspected and found to have no missing values. Column names were made descriptive, binary variables standardized to "Yes"/"No", and discrete features rounded and mapped to meaningful categories. Text inconsistencies were corrected, categorical features converted to category dtype, and a BMI column was calculated by dividing weight by height squared. 
 
-            ## Predictor Variables
-            - Age   
-            - Overweight_Family_History: Has a family member suffered or suffers from overweight?
-            - High_Calorie_Consumption_Often: Do you eat high caloric food frequently?
-            - Vegetable_Consumption_Often: Do you usually eat vegetables in your meals?
-            - Calories_Monitored_Daily: Do you monitor the calories you eat daily?
-            - Workout_Frequency: How often do you have physical activity?	
-            - Alcohol_Consumption_Frequency: How often do you drink alcohol?
-            - Means_of_Transportation: Which transportation do you usually use?
+                ## Target Variable
+                - BMI (kg/m2)
 
-            ## Goals
-            - Determine factors affecting BMI
-            - Build predictive models: Linear Regression, Lasso, Random Forest
+                ## Predictor Variables
+                - Age   
+                - Overweight_Family_History
+                - High_Calorie_Consumption_Often
+                - Vegetable_Consumption_Often
+                - Calories_Monitored_Daily
+                - Workout_Frequency
+                - Alcohol_Consumption_Frequency
+                - Means_of_Transportation
 
-            ## App Usage
-            - View data in Data tab
-            - Select model & train/test split in Modeling tab
-            - Enter new values to predict BMI
+                ## Goals
+                - Determine factors affecting BMI
+                - Build predictive models: Linear Regression, Lasso, Random Forest
 
-            ## Authors
-            Natalie Seah, Erin Siedlecki, Emily Garman, Ben Doniger, Bela Barton
-            """)
+                ## App Usage
+                - View data in Data tab
+                - Select model & train/test split in Modeling tab
+                - Enter new values to predict BMI based on model selected
+
+                ## Authors
+                Natalie Seah, Erin Siedlecki, Emily Garman, Ben Doniger, Bela Barton
+                """),
+                style="padding:20px; background-color:#ecf0f1; border-radius:12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);"
+            )
         ),
-        # DATA TAB
+
+        # data tab
         ui.nav_panel(
             "Data",
-            ui.h3("Dataset Preview"),
-            ui.p(f"Showing first 100 rows out of {total_rows} total rows."),
-            ui.output_table("datatable", bordered=True, striped=True, hover=True)
+            ui.div(
+                ui.p(f"Entries shown are out of {total_rows} total rows.", style="font-weight:bold; color:#34495e;"),
+                ui.div(
+                    ui.TagList(
+                        "Show ",
+                        ui.div(
+                            ui.input_select(
+                                "rows_to_show",
+                                "",
+                                {10: "10", 25: "25", 50: "50", 100: "100"},
+                                selected=100
+                            ),
+                            style="width: 80px; display: inline-block;"
+                        ),
+                        " entries"
+                    ),
+                    style="margin-bottom: 15px; white-space: nowrap;"
+                ),
+                ui.output_table("datatable", bordered=True, striped=True, hover=True, style="margin-top:10px;")
+            )
         ),
-        # MODELING TAB
+
+        # Modeling tab
         ui.nav_panel(
             "Modeling",
             ui.layout_sidebar(
+                # Sidebar
                 ui.sidebar(
-                    ui.h4("Choose a Model"),
-                    ui.input_select(
-                        "model_choice",
-                        "Model Type:",
-                        {
-                            "linreg": "Multiple Linear Regression",
-                            "lasso": "Lasso Regression",
-                            "rf": "Random Forest"
-                        }
+                    ui.card(
+                        ui.TagList(
+                            ui.h4("Choose a Model", style="color:#2c3e50; font-weight:bold;"),
+                            ui.input_select(
+                                "model_choice",
+                                "Model Type:",
+                                {
+                                    "linreg": "Multiple Linear Regression",
+                                    "lasso": "Lasso Regression",
+                                    "rf": "Random Forest"
+                                }
+                            ),
+                            ui.h4("Train/Test Split", style="color:#2c3e50; margin-top:15px; font-weight:bold;"),
+                            ui.input_slider("split", "Train/Test Split (%)", min=50, max=90, value=80),
+                            ui.hr(),
+                            ui.h4("Predict on New Data", style="color:#2c3e50; margin-top:15px; font-weight:bold;"),
+                            ui.output_ui("prediction_inputs")
+                        ),
+                        style="padding:20px; border-radius:15px; box-shadow:0 6px 12px rgba(0,0,0,0.15); background-color:#f8f9fa; margin-bottom:20px;"
                     ),
-                    ui.h4("Train/Test Split"),
-                    ui.input_slider("split", "Train/Test Split (%)", min=50, max=90, value=80),
-                    ui.input_action_button("run_model", "Run Model", class_="btn-primary"),
-                    ui.hr(),
-                    ui.h4("Predict on New Data"),
-                    ui.output_ui("prediction_inputs")  # <-- dynamic inputs appear here
-                ),
-                ui.card(
-                    ui.h4("Regression Coefficients / Feature Importance"),
-                    ui.output_table("coef_table"),
-                    ui.h4("Evaluation Metrics"),
-                    ui.output_ui("eval_metrics")
+                    width="350px"  
+                )
+                ,
+                            
+                ui.row(
+                    ui.column(12,
+                        ui.card(
+                            ui.TagList(
+                                ui.h4("Regression Coefficients / Feature Importance", style="color:#2c3e50; font-weight:bold;"),
+                                ui.output_table("coef_table")
+                            ),
+                            style="padding:20px; border-radius:15px; box-shadow:0 6px 12px rgba(0,0,0,0.15); background-color:#f8f9fa; margin-bottom:20px;"
+                        ),
+                        ui.card(
+                            ui.TagList(
+                                ui.h4("Evaluation Metrics", style="color:#2c3e50; font-weight:bold;"),
+                                ui.output_ui("eval_metrics")
+                            ),
+                            style="padding:20px; border-radius:15px; box-shadow:0 6px 12px rgba(0,0,0,0.15); background-color:#f8f9fa; margin-bottom:20px;"
+                        )
+                    )
                 )
             )
         )
     )
 )
 
-# -------------------------
-# SERVER
-# -------------------------
+#Server
 def server(input, output, session):
 
-    # -------------------------
-    # DATA TAB
-    # -------------------------
+    #Data tab
     @output
     @render.table
     def datatable():
-        return df.head(100)
+        n = int(input.rows_to_show())
+        return df.head(n)
 
-    # -------------------------
-    # MODELING TAB: reactive for model training
-    # -------------------------
+    #Modeling tab
     @reactive.Calc
     def model_results():
-        input.run_model()  # trigger
         model_type = input.model_choice()
         df_filtered = df[df['Alcohol_Consumption_Frequency'] != 'Always'].copy()
         nums = ['Age']
@@ -160,7 +192,6 @@ def server(input, output, session):
             ]
         )
 
-        # LINEAR REGRESSION
         if model_type == "linreg":
             X_train_processed = preprocess.fit_transform(X_train)
             X_test_processed = preprocess.transform(X_test)
@@ -174,10 +205,10 @@ def server(input, output, session):
             r2 = r2_score(y_test, y_pred)
             rmse = np.sqrt(mean_squared_error(y_test, y_pred))
             mae = mean_absolute_error(y_test, y_pred)
-            return {"model": model, "preprocess": preprocess, "X_train": X_train_sm, "X_test": X_test_sm, "y_test": y_test, "y_pred": y_pred,
+            return {"model": model, "preprocess": preprocess, "X_train": X_train_sm, "X_test": X_test_sm,
+                    "y_test": y_test, "y_pred": y_pred,
                     "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "linreg", "cats": cats, "nums": nums}
 
-        # LASSO REGRESSION
         elif model_type == "lasso":
             lasso_pipeline = Pipeline([
                 ('preprocessor', preprocess),
@@ -192,11 +223,12 @@ def server(input, output, session):
             feature_names = preprocess.get_feature_names_out()
             coefs = pd.Series(lasso_pipeline.named_steps['lasso'].coef_, index=feature_names)
             non_zero_coefs = coefs[coefs != 0].sort_values(ascending=False)
-            return {"model": lasso_pipeline, "preprocess": preprocess, "X_train": X_train, "X_test": X_test, "y_test": y_test, "y_pred": y_pred,
-                    "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "lasso", "coefs": non_zero_coefs, "cats": cats, "nums": nums}
+            return {"model": lasso_pipeline, "preprocess": preprocess, "X_train": X_train, "X_test": X_test,
+                    "y_test": y_test, "y_pred": y_pred,
+                    "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "lasso",
+                    "coefs": non_zero_coefs, "cats": cats, "nums": nums}
 
-        # RANDOM FOREST
-        elif model_type == "rf":
+        else:  # rf
             X_train_processed = preprocess.fit_transform(X_train)
             X_test_processed = preprocess.transform(X_test)
             feature_names = preprocess.get_feature_names_out()
@@ -210,13 +242,11 @@ def server(input, output, session):
             rmse = np.sqrt(mean_squared_error(y_test, y_pred))
             mae = mean_absolute_error(y_test, y_pred)
             rf_importances = pd.Series(rf_model.feature_importances_, index=X_train_df.columns).sort_values(ascending=False)
+            return {"model": rf_model, "preprocess": preprocess, "X_train": X_train_df, "X_test": X_test_df,
+                    "y_test": y_test, "y_pred": y_pred,
+                    "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "rf",
+                    "coefs": rf_importances, "cats": cats, "nums": nums}
 
-            return {"model": rf_model, "preprocess": preprocess, "X_train": X_train_df, "X_test": X_test_df, "y_test": y_test, "y_pred": y_pred,
-                    "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "rf", "coefs": rf_importances, "cats": cats, "nums": nums}
-
-    # -------------------------
-    # Coefficients / Feature Importance Table
-    # -------------------------
     @output
     @render.table
     def coef_table():
@@ -227,14 +257,11 @@ def server(input, output, session):
             coefs = results["model"].summary2().tables[1].reset_index().rename(columns={'index':'Variable'})
             cols = ['Variable'] + [c for c in coefs.columns if c != 'Variable']
             return coefs[cols]
-        elif results["type"] in ["lasso", "rf"]:
+        else:
             coefs = results["coefs"].reset_index()
             coefs.columns = ["Variable", "Coefficient" if results['type']=='lasso' else "Importance"]
             return coefs
 
-    # -------------------------
-    # Evaluation Metrics
-    # -------------------------
     @output
     @render.ui
     def eval_metrics():
@@ -244,9 +271,6 @@ def server(input, output, session):
         m = results["metrics"]
         return ui.HTML(f"<pre>RMSE: {m['RMSE']:.3f}\nMAE: {m['MAE']:.3f}\nR²: {m['R2']:.3f}</pre>")
 
-    # -------------------------
-    # Dynamic inputs for prediction (only show used variables)
-    # -------------------------
     @output
     @render.ui
     def prediction_inputs():
@@ -260,15 +284,12 @@ def server(input, output, session):
             'Alcohol_Consumption_Frequency',
             'Means_of_Transportation'
         ]
-        numeric_inputs = [ui.input_numeric(f"pred_{col}", col, float(df[col].mean())) for col in nums]
+        numeric_inputs = [ui.input_numeric(f"pred_{col}", col, int(round(df[col].mean()))) for col in nums]
         categorical_inputs = [ui.input_select(f"pred_{col}", col, {val: val for val in df[col].dropna().unique()}) for col in cats]
         return ui.TagList(*(numeric_inputs + categorical_inputs +
                             [ui.input_action_button("predict_model", "Predict", class_="btn-success"),
                              ui.output_text("predicted_bmi")]))
 
-    # -------------------------
-    # Prediction on new user input (display in UI)
-    # -------------------------
     @output
     @render.text
     @reactive.event(input.predict_model)
@@ -276,30 +297,23 @@ def server(input, output, session):
         results = model_results()
         if results is None:
             return "No model trained yet."
-
-        # Collect numeric inputs
         new_data = {col: input[f"pred_{col}"]() for col in results["nums"]}
-        # Collect categorical inputs
         for col in results["cats"]:
             new_data[col] = input[f"pred_{col}"]()
-
         new_df = pd.DataFrame([new_data])
         preprocess = results["preprocess"]
 
-        # Transform and predict
         if results["type"] == "linreg":
             X_new = preprocess.transform(new_df)
             X_new_df = pd.DataFrame(X_new, columns=preprocess.get_feature_names_out())
             X_new_sm = sm.add_constant(X_new_df, has_constant='add')
             X_new_sm = X_new_sm.reindex(columns=results["X_train"].columns, fill_value=0)
             pred_bmi = results["model"].predict(X_new_sm)[0]
-
         elif results["type"] == "lasso":
             X_new = preprocess.transform(new_df)
             scaler = results["model"].named_steps["scaler"]
             X_new_scaled = scaler.transform(X_new)
             pred_bmi = results["model"].named_steps["lasso"].predict(X_new_scaled)[0]
-
         else:  # rf
             X_new = preprocess.transform(new_df)
             X_new_df = pd.DataFrame(X_new, columns=preprocess.get_feature_names_out())
@@ -307,7 +321,7 @@ def server(input, output, session):
 
         return f"Predicted BMI: {pred_bmi:.2f}"
 
-# -------------------------
-# CREATE APP
-# -------------------------
+#create app
 app = App(app_ui, server)
+
+
