@@ -10,6 +10,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LassoCV
 from sklearn.ensemble import RandomForestRegressor
 
+# Load and preprocess data
 df = pd.read_csv("obesity_cleaned.csv")
 df['BMI_kg_m2'] = round(df['Weight'] / (df['Height'] ** 2), 2)
 df = df.rename(columns={'Height': 'Height_meters', 'Weight': 'Weight_kg'})
@@ -20,8 +21,15 @@ predictor_cols = [c for c in df.columns if c != target_col]
 numeric_predictors = [c for c in predictor_cols if pd.api.types.is_numeric_dtype(df[c])]
 categorical_predictors = [c for c in predictor_cols if c not in numeric_predictors]
 
-#UI
+# UI
 app_ui = ui.page_fluid(
+    # Global CSS for table alignment
+    ui.tags.style("""
+        table th, table td {
+            text-align: left !important;
+        }
+    """),
+
     # Title
     ui.div(
         ui.h1(
@@ -30,8 +38,10 @@ app_ui = ui.page_fluid(
         ),
         style="padding-left:20px;"
     ),
+
+    # Navbar
     ui.page_navbar(
-        # readme tab
+        # README tab
         ui.nav_panel(
             "README",
             ui.div(
@@ -40,9 +50,7 @@ app_ui = ui.page_fluid(
                 This app uses nutritional, physical, and behavioral data to build predictive models for BMI.
                 <br>
                 ## Data Source
-                The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records. The official dataset article was consulted to understand each variable and its codebook definitions.
-
-                The dataset was inspected and found to have no missing values. Column names were made descriptive, binary variables standardized to "Yes"/"No", and discrete features rounded and mapped to meaningful categories. Text inconsistencies were corrected, categorical features converted to category dtype, and a BMI column was calculated by dividing weight by height squared. 
+                The dataset used in this project is the Estimation of Obesity Levels based on Eating Habits and Physical Condition from the UCI Machine Learning Repository. It contains nutritional, physical, and behavioral features of individuals, along with a target variable representing their obesity level. The data was originally collected via an anonymous online survey, and after initial preprocessing and BMI calculation, synthetic data was generated to address class imbalance, resulting in a final, balanced dataset of 2,111 records.
 
                 ## Target Variable
                 - BMI (kg/m2)
@@ -73,7 +81,7 @@ app_ui = ui.page_fluid(
             )
         ),
 
-        # data tab
+        # Data tab
         ui.nav_panel(
             "Data",
             ui.div(
@@ -124,19 +132,23 @@ app_ui = ui.page_fluid(
                         ),
                         style="padding:20px; border-radius:15px; box-shadow:0 6px 12px rgba(0,0,0,0.15); background-color:#f8f9fa; margin-bottom:20px;"
                     ),
-                    width="350px"  
-                )
-                ,
-                            
+                    width="350px"
+                ),
+                # Main panel
                 ui.row(
                     ui.column(12,
+                        # Regression Coefficients / Feature Importance
                         ui.card(
                             ui.TagList(
                                 ui.h4("Regression Coefficients / Feature Importance", style="color:#2c3e50; font-weight:bold;"),
-                                ui.output_table("coef_table")
+                                ui.div(
+                                    ui.output_table("coef_table"),
+                                    style="text-align: left;"
+                                )
                             ),
                             style="padding:20px; border-radius:15px; box-shadow:0 6px 12px rgba(0,0,0,0.15); background-color:#f8f9fa; margin-bottom:20px;"
                         ),
+                        # Evaluation Metrics
                         ui.card(
                             ui.TagList(
                                 ui.h4("Evaluation Metrics", style="color:#2c3e50; font-weight:bold;"),
@@ -148,20 +160,19 @@ app_ui = ui.page_fluid(
                 )
             )
         )
-    )
-)
+    )  # closes page_navbar
+)  # closes page_fluid
 
-#Server
+# Server
 def server(input, output, session):
-
-    #Data tab
+    # Data tab
     @output
     @render.table
     def datatable():
         n = int(input.rows_to_show())
         return df.head(n)
 
-    #Modeling tab
+    # Modeling tab
     @reactive.Calc
     def model_results():
         model_type = input.model_choice()
@@ -247,6 +258,7 @@ def server(input, output, session):
                     "metrics": {"R2": r2, "RMSE": rmse, "MAE": mae}, "type": "rf",
                     "coefs": rf_importances, "cats": cats, "nums": nums}
 
+    # Coefficient table
     @output
     @render.table
     def coef_table():
@@ -262,6 +274,7 @@ def server(input, output, session):
             coefs.columns = ["Variable", "Coefficient" if results['type']=='lasso' else "Importance"]
             return coefs
 
+    # Evaluation metrics
     @output
     @render.ui
     def eval_metrics():
@@ -271,6 +284,7 @@ def server(input, output, session):
         m = results["metrics"]
         return ui.HTML(f"<pre>RMSE: {m['RMSE']:.3f}\nMAE: {m['MAE']:.3f}\nR²: {m['R2']:.3f}</pre>")
 
+    # Prediction inputs
     @output
     @render.ui
     def prediction_inputs():
@@ -290,6 +304,7 @@ def server(input, output, session):
                             [ui.input_action_button("predict_model", "Predict", class_="btn-success"),
                              ui.output_text("predicted_bmi")]))
 
+    # Predicted BMI
     @output
     @render.text
     @reactive.event(input.predict_model)
@@ -321,7 +336,5 @@ def server(input, output, session):
 
         return f"Predicted BMI: {pred_bmi:.2f}"
 
-#create app
+# Create app
 app = App(app_ui, server)
-
-
